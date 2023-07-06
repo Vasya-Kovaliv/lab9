@@ -1,0 +1,44 @@
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+def generate_shared_secret(privKey, pubKey):
+    private_key = ec.derive_private_key(privKey, ec.SECP256R1(), default_backend())
+    public_key = ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(), pubKey)
+    
+    shared_key = private_key.exchange(ec.ECDH(), public_key)
+    
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(shared_key)
+    shared_secret = digest.finalize()
+    
+    return shared_secret
+
+def main():
+    # Загально системні параметри
+    curve = ec.SECP256R1()
+    
+    # Учасник 1
+    privKey1 = ec.generate_private_key(curve, default_backend())
+    privKey1_value = privKey1.private_numbers().private_value
+    pubKey1 = privKey1.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+    
+    # Учасник 2
+    privKey2 = ec.generate_private_key(curve, default_backend())
+    privKey2_value = privKey2.private_numbers().private_value
+    pubKey2 = privKey2.public_key().public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+    
+    # Обмін відкритими ключами
+    shared_secret1 = generate_shared_secret(privKey1_value, pubKey2)
+    shared_secret2 = generate_shared_secret(privKey2_value, pubKey1)
+    
+    # Перевірка, чи спільні секрети співпадають
+    if shared_secret1 == shared_secret2:
+        print("Shared secrets match!")
+        print("Shared Secret:", shared_secret1.hex())
+    else:
+        print("Shared secrets do not match!")
+
+if __name__ == '__main__':
+    main()
